@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Exam Seating Planner</title>
+<style>
+body {
+  font-family: 'Segoe UI', sans-serif;
+  margin:0; padding:0;
+  background:#1e293b; color:#f1f5f9;
+}
+header { background:#0ea5e9; padding:1rem; text-align:center; font-size:1.8rem; font-weight:bold;}
+main { padding:2rem; }
+input, select, button, textarea { padding:0.5rem; margin:0.2rem; width:100%; box-sizing:border-box;}
+table { width:100%; border-collapse: collapse; margin-top:1rem;}
+th, td { border:1px solid #94a3b8; padding:0.5rem; text-align:center;}
+th { background:#0ea5e9; color:white;}
+.room { margin-top:2rem; padding:1rem; background:#334155; border-radius:10px;}
+.room h3 { color:#38bdf8; margin-top:0;}
+textarea { height:150px;}
+.highlight { background:#16a34a; color:white; font-weight:bold; }
+.search-box { margin-top:1rem; }
+</style>
+</head>
+<body>
+<header>Smart Exam Seating Planner (Intelligent)</header>
+<main>
+
+<h2>1. Upload Student List</h2>
+<p>Paste student data (Name, Roll, Dept, Semester, Subject, Section)</p>
+<textarea id="studentsInput" placeholder="e.g., Soumyadeep Jana,101,CSE,4,Math,A"></textarea>
+
+<h2>2. Exam Halls</h2>
+<label>Number of Halls: <input type="number" id="numHalls" value="2" min="1"></label>
+<button onclick="generateHallForms()">Set Halls</button>
+<div id="hallForms"></div>
+
+<h2>3. Generate Seating Plan</h2>
+<button onclick="generateSeating()">Generate Plan</button>
+
+<div class="search-box">
+<h3>Find Your Seat</h3>
+<input type="text" id="searchInput" placeholder="Enter Roll Number or Name or Section">
+<button onclick="searchSeat()">Search</button>
+<p id="searchResult"></p>
+</div>
+
+<div id="planOutput"></div>
+<div id="aiOutput"></div>
+
+<script>
+let halls=[];
+
+// Create hall forms
+function generateHallForms(){
+    const num = parseInt(document.getElementById('numHalls').value);
+    const container = document.getElementById('hallForms');
+    container.innerHTML='';
+    halls=[];
+    for(let i=0;i<num;i++){
+        const div = document.createElement('div');
+        div.className='room';
+        div.innerHTML=`
+            <h3>Hall ${i+1}</h3>
+            <label>Name: <input type="text" id="hallName${i}" value="Hall ${i+1}"></label><br>
+            <label>Rows: <input type="number" id="rows${i}" value="5"></label>
+            <label>Columns: <input type="number" id="cols${i}" value="6"></label>
+        `;
+        container.appendChild(div);
+        halls.push({name:`Hall ${i+1}`, rows:5, cols:6, seats:[]});
+    }
+}
+
+// Shuffle array
+function shuffle(array){ 
+    for(let i=array.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [array[i], array[j]]=[array[j], array[i]];
+    } 
+    return array;
+}
+
+// Generate seating
+function generateSeating(){
+    const studentCSV = document.getElementById('studentsInput').value.trim();
+    if(!studentCSV){ alert('Enter student data'); return;}
+    
+    let students = studentCSV.split('\n').map(line=>{
+        const [name,roll,dept,sem,subject,section]=line.split(',').map(s=>s.trim());
+        return {name, roll, dept, sem, subject, section};
+    });
+
+    // Group students by section
+    const sections = {};
+    students.forEach(s=>{
+        if(!sections[s.section]) sections[s.section]=[];
+        sections[s.section].push(s);
+    });
+
+    // Update hall info
+    halls.forEach((h,i)=>{
+        h.name = document.getElementById('hallName'+i).value;
+        h.rows = parseInt(document.getElementById('rows'+i).value);
+        h.cols = parseInt(document.getElementById('cols'+i).value);
+        h.seats=[];
+    });
+
+    // Allocate sections to halls
+    let hallIndex = 0;
+    for(let sec in sections){
+        let secStudents = shuffle(sections[sec]); // Shuffle within section
+        for(let student of secStudents){
+            let hall = halls[hallIndex];
+            hall.seats.push(student);
+            hallIndex = (hallIndex + 1) % halls.length;
+        }
+    }
+
+    // Render seating
+    let planHTML='';
+    halls.forEach(h=>{
+        planHTML+=`<div class="room"><h3>${h.name} (Rows:${h.rows} Cols:${h.cols})</h3>`;
+        planHTML+='<table><tr>';
+        for(let c=0;c<h.cols;c++) planHTML+='<th>Col '+(c+1)+'</th>'; planHTML+='</tr>';
+
+        let index=0;
+        for(let r=0;r<h.rows;r++){
+            planHTML+='<tr>';
+            for(let c=0;c<h.cols;c++){
+                if(index<h.seats.length){
+                    let s = h.seats[index++];
+                    // Highlight same dept/subject separation (simple logic)
+                    planHTML+=`<td class="${s.subject? 'highlight':''}">${s.roll}<br>${s.name}<br>${s.dept}<br>${s.subject}<br>Sec:${s.section}</td>`;
+                }else{
+                    planHTML+='<td>Empty</td>';
+                }
+            }
+            planHTML+='</tr>';
+        }
+        planHTML+='</table></div>';
+    });
+
+    document.getElementById('planOutput').innerHTML=planHTML;
+
+    // AI intelligent summary
+    let summary = `Total Halls: ${halls.length}, Total Students: ${students.length}\n`;
+    for(let h of halls){
+        summary+=`${h.name}: ${h.seats.length} students, Sections: ${[...new Set(h.seats.map(s=>s.section))].join(', ')}\n`;
+    }
+    document.getElementById('aiOutput').innerHTML='<pre>'+summary+'</pre>';
+}
+
+// Search seat
+function searchSeat(){
+    const query = document.getElementById('searchInput').value.trim().toLowerCase();
+    if(!query){ alert('Enter Roll, Name, or Section'); return;}
+    let found = null;
+    for(let h of halls){
+        for(let i=0;i<h.seats.length;i++){
+            let s = h.seats[i];
+            if(s.roll.toLowerCase()===query || s.name.toLowerCase().includes(query) || s.section.toLowerCase()===query){
+                let row = Math.floor(i/h.cols)+1;
+                let col = (i%h.cols)+1;
+                found = `Student ${s.name} (Roll:${s.roll}, Section:${s.section}) is in ${h.name}, Row ${row}, Col ${col}`;
+                break;
+            }
+        }
+        if(found) break;
+    }
+    document.getElementById('searchResult').innerText = found || 'Student not found';
+}
+</script>
+
+</main>
+</body>
+</html>

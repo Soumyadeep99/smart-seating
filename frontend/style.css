@@ -1,0 +1,9 @@
+body { font-family: 'Segoe UI', sans-serif; background:#1e293b; color:#f1f5f9; margin:0; padding:0;}
+header { background:#0ea5e9; text-align:center; padding:1rem; font-size:1.8rem; font-weight:bold;}
+main { padding:2rem; }
+textarea,input,button { width:100%; margin:0.3rem 0; padding:0.5rem; }
+table { width:100%; border-collapse: collapse; margin-top:1rem; }
+th,td { border:1px solid #94a3b8; padding:0.5rem; text-align:center;}
+th { background:#0ea5e9; color:white;}
+.room { background:#334155; margin-top:1rem; padding:1rem; border-radius:10px;}
+#aiOutput { background:#0f172a; padding:1rem; margin-top:1rem; border-radius:10px;}
